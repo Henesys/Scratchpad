@@ -1,0 +1,96 @@
+---
+title: "Quant Concepts"
+author: "Henesys"
+date: "2025-05-01"
+output:
+  github_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Packages
+
+```{r warning=FALSE}
+library(xts)
+library(quantmod)   
+library(PerformanceAnalytics)
+```
+
+# Retrieval
+
+```{r}
+# Retrieve Apple stock data
+getSymbols("AAPL", from = "2020-01-01")
+
+# Calculate daily returns
+AAPL_returns <- dailyReturn(Cl(AAPL))
+
+# Retrieve S&P 500 index data for CAPM beta
+getSymbols("^GSPC", from = "2020-01-01")
+GSPC_returns <- dailyReturn(Cl(GSPC))
+
+# Align dates (in case of missing values)
+returns_merged <- merge(AAPL_returns, GSPC_returns)
+returns_merged <- na.omit(returns_merged)
+
+# Visualize Apple stock price
+chartSeries(AAPL, theme = "white")
+
+# Visualize cumulative returns
+plot(cumprod(1 + AAPL_returns) - 1, main = "Cumulative Returns")
+
+# Basic descriptive statistics
+cat("Descriptive Statistics for Apple Returns:\n")
+print(table.Stats(AAPL_returns))
+
+# Risk metrics
+cat("\nValue at Risk (95%):\n")
+print(VaR(AAPL_returns, p = 0.95))
+cat("\nExpected Shortfall (95%):\n")
+print(ES(AAPL_returns, p = 0.95))
+
+# Technical indicators
+AAPL$SMA_20 <- SMA(Cl(AAPL), 20)  # 20-day Simple Moving Average
+AAPL$EMA_20 <- EMA(Cl(AAPL), 20)  # 20-day Exponential MA
+
+# Plot technical indicators
+addTA(AAPL$SMA_20, col = "blue")
+addTA(AAPL$EMA_20, col = "red")
+
+# CAPM Beta Calculation
+exists("GSPC")  # TRUE
+colnames(AAPL_returns) <- "AAPL"
+colnames(GSPC_returns) <- "GSPC"
+returns_merged <- merge(AAPL_returns, GSPC_returns)
+beta_model <- lm(AAPL ~ GSPC, data = returns_merged)
+cat("\nCAPM Beta (vs S&P 500):\n")
+print(coef(beta_model)[2])
+```
+
+```{r}
+# Rolling (e.g., 21-day) standard deviation of returns to visualize how volatility changes over time
+# 21-day rolling volatility (annualized)
+rolling_vol <- runSD(AAPL_returns, n = 21) * sqrt(252)
+plot(rolling_vol, main = "AAPL 21-Day Rolling Volatility (Annualized)", col = "blue", ylab = "Volatility")
+```
+
+```{r}
+# Bollinger Bands visualize price volatility by plotting bands two standard deviations above and below a moving average
+
+chartSeries(AAPL, theme = chartTheme("white"), TA = "addBBands()")
+```
+
+```{r}
+hist(AAPL_returns, breaks = 50, main = "Histogram of AAPL Daily Returns", xlab = "Daily Return", col = "lightblue")
+```
+
+```{r}
+chartSeries(AAPL, theme = chartTheme("white"),
+            TA = c("addBBands()", "addVo()", "addEMA(20)", "addEMA(10, col=2)"))
+
+```
+
